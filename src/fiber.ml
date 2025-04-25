@@ -13,7 +13,7 @@ struct
   let yield () = Eio.Fiber.yield ()
 
   let cancel () = Eio.Fiber.await_cancel ()
-  let semaphore () = Eio.Semaphore.make 0
+  let make_semaphore () = Eio.Semaphore.make 0
   let get_value sem = Eio.Semaphore.get_value sem
   let release sem = Eio.Semaphore.release sem
 
@@ -25,5 +25,6 @@ struct
       | [] -> []
       | head :: tail -> (fun () -> task_wrap head) :: make_jobs tail
     in
-    Eio.Fiber.any (make_jobs fibers)
+    let res = Eio.Fiber.any (make_jobs fibers) in
+    res
 end
