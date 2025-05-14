@@ -59,7 +59,7 @@ let rec print_error err ppf =
 
 (** A stack entry *)
 type entry =
-  | RO of Value.value_promise      (** read-only stack value *)
+  | RO of Value.value_promise  (** read-only stack value *)
   | RW of Value.value_promise ref  (** read-write stack value *)
 
 type precision = { prec_mpfr_min : int; prec_lim_min : int; prec_mpfr : int }

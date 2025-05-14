@@ -6,7 +6,6 @@ exception InvalidCase
 type 'a promise = 'a Picos_std_structured.Promise.t
 
 let as_promise = Picos_std_structured.Promise.of_value
-
 let mk_promise ~bundle = Picos_std_structured.Bundle.fork_as_promise bundle
 
 (** Yield due to precision loss or spent loop fuel. Upon resumption, either
