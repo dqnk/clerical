@@ -122,55 +122,40 @@ let rec comp ~bundle ~prec stack { Location.data = c; Location.loc } :
   if !Config.trace then print_trace ~loc ~prec stack;
   let { Run.prec_mpfr; _ } = prec in
   match c with
-
-  | Syntax.Var k ->
-    begin
+  | Syntax.Var k -> (
       match lookup_val k stack with
       | None -> Run.error ~loc Run.OutOfStack
       | Some p ->
-        let v = Parallel.await p in
-        (stack, v)
-    end
-
+          let v = Parallel.await p in
+          (stack, v))
   | Syntax.Boolean b -> (stack, Value.VBoolean b)
-
   | Syntax.Integer k -> (stack, Value.VInteger k)
-
   | Syntax.Float s ->
       let rl = Dyadic.of_string ~prec:prec_mpfr ~round:Dyadic.down s in
       let ru = Dyadic.of_string ~prec:prec_mpfr ~round:Dyadic.up s in
       let r = Real.make rl ru in
       (stack, Value.VReal r)
-
   | Syntax.Apply (k, es) -> (
       match lookup_fun k stack with
       | None -> Run.error ~loc Run.InvalidFunction
       | Some f ->
-          (* Optimization: copy the stack once and use it for all [es].
-             For this to work, we need a version of [comp_ro] that doesn't
-             copy the stack. *)
-          let ps = List.map (comp_ro ~bundle ~prec stack) es in
+          let stack' = make_ro stack in
+          let ps = List.map (comp_ro' ~bundle ~prec stack') es in
           let v = f ~bundle ~loc ~prec ps in
           (stack, v))
-
   | Syntax.Skip -> (stack, Value.VUnit)
-
   | Syntax.Trace ->
       print_trace ~loc ~prec stack;
       (stack, Value.VUnit)
-
   | Syntax.Sequence (c1, c2) ->
       let stack, v1 = comp ~bundle ~prec stack c1 in
       let () = as_unit ~loc:c1.Location.loc v1 in
       comp ~bundle ~prec stack c2
-
   | Syntax.If (b, c1, c2) -> (
       match comp_ro_as_boolean ~bundle ~loc ~prec stack b with
       | true -> comp ~bundle ~prec stack c1
       | false -> comp ~bundle ~prec stack c2)
-
   | Syntax.Case cases -> comp_case ~bundle ~loc ~prec stack cases
-
   | Syntax.While (b, c) ->
       let granularity = 1000 in
       let rec loop k stack =
@@ -183,29 +168,27 @@ let rec comp ~bundle ~prec stack { Location.data = c; Location.loc } :
             loop ((k + 1) mod granularity) stack
       in
       loop 1 stack
-
   | Syntax.Newvar (xes, c) ->
-      let xvs = List.map (fun (x, e) -> (x, comp_ro ~bundle ~prec stack e)) xes in
+      let xvs =
+        List.map (fun (x, e) -> (x, comp_ro ~bundle ~prec stack e)) xes
+      in
       let stack' = push_rws xvs stack in
       let _, v = comp ~bundle ~prec stack' c in
       (stack, v)
-
   | Syntax.Let (xes, c) ->
-      let xvs = List.map (fun (x, e) -> (x, comp_ro ~bundle ~prec stack e)) xes in
+      let xvs =
+        List.map (fun (x, e) -> (x, comp_ro ~bundle ~prec stack e)) xes
+      in
       let stack' = push_ros xvs stack in
       let _, v = comp ~bundle ~prec stack' c in
       (stack, v)
-
-  | Syntax.Assign (k, e) ->
-    begin
+  | Syntax.Assign (k, e) -> (
       match lookup_ref k stack with
       | None -> Run.error ~loc Run.CannotWrite
       | Some r ->
           let v = comp_ro ~bundle ~prec stack e in
           r := v;
-          (stack, Value.VUnit)
-    end
-
+          (stack, Value.VUnit))
   | Syntax.Lim (x, e) -> (
       (* when computing at precision n we first try to compute the n-th term
         of the limit, and use that as the approximate result. If the computation
@@ -250,9 +233,12 @@ and comp_ro ~bundle ~prec stack c : Value.value_promise =
   let stack = make_ro stack in
   Parallel.mk_promise ~bundle @@ fun () -> snd (comp ~bundle ~prec stack c)
 
-(** Compute a read-only computation and extract its value. *)
+and comp_ro' ~bundle ~prec stack c : Value.value_promise =
+  Parallel.mk_promise ~bundle @@ fun () -> snd (comp ~bundle ~prec stack c)
 (* and comp_ro_value ~bundle ~prec stack c = *)
 (*   Parallel.await @@ as_value ~loc:c.Location.loc (comp_ro ~bundle ~prec stack c) *)
+
+(** Compute a read-only computation and extract its value. *)
 
 (** Compute a read-only computation and extract its value as a boolean. *)
 and comp_ro_as_boolean ~bundle ~loc ~prec stack c =
@@ -308,7 +294,8 @@ let topcomp ~max_prec stack ({ Location.loc; _ } as c) =
   in
   let prec = Run.initial_prec () in
   try
-    Parallel.toplevel ?domains:!Config.domains @@ fun bundle -> loop ~bundle prec
+    Parallel.toplevel ?domains:!Config.domains @@ fun bundle ->
+    loop ~bundle prec
   with Parallel.InvalidCase -> Run.(error ~loc InvalidCase)
 
 let topfun stack xs c =
