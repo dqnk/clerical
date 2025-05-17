@@ -119,9 +119,8 @@ let rec comp ~bundle ~prec stack { Location.data = c; Location.loc } :
       match lookup_fun k stack with
       | None -> Run.error ~loc Run.InvalidFunction
       | Some f ->
-          let stack' = make_ro stack in
-          let ps = List.map (comp_ro' ~bundle ~prec stack') es in
-          let v = f ~bundle ~loc ~prec ps in
+          let ps = List.map (comp_ro' ~bundle ~prec stack) es in
+          let v = f ~bundle ~loc ~prec @@ List.map Parallel.as_promise ps in
           (stack, v))
   | Syntax.Skip -> (stack, Value.VUnit)
   | Syntax.Trace ->
@@ -213,8 +212,12 @@ and comp_ro ~bundle ~prec stack c : Value.value_promise =
   let stack = make_ro stack in
   Parallel.mk_promise ~bundle @@ fun () -> snd (comp ~bundle ~prec stack c)
 
+and comp_ro' ~bundle ~prec stack c : Value.value =
+  snd (comp ~bundle ~prec stack c)
+(*
 and comp_ro' ~bundle ~prec stack c : Value.value_promise =
   Parallel.mk_promise ~bundle @@ fun () -> snd (comp ~bundle ~prec stack c)
+*)
 (* and comp_ro_value ~bundle ~prec stack c = *)
 (*   Parallel.await @@ as_value ~loc:c.Location.loc (comp_ro ~bundle ~prec stack c) *)
 
