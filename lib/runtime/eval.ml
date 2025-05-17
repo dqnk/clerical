@@ -149,12 +149,32 @@ let rec comp ~bundle ~prec stack { Location.data = c; Location.loc } :
       loop 1 stack
   | Syntax.Newvar (xes, c) ->
       let xvs =
-        List.map (fun (x, e) -> (x, comp_ro ~bundle ~prec stack e)) xes
+        List.map
+          (fun (x, e) ->
+            (x, Parallel.as_promise @@ comp_ro' ~bundle ~prec stack e))
+          xes
       in
       let stack' = push_rws xvs stack in
       let _, v = comp ~bundle ~prec stack' c in
       (stack, v)
   | Syntax.Let (xes, c) ->
+      let xvs =
+        List.map
+          (fun (x, e) ->
+            (x, Parallel.as_promise @@ comp_ro' ~bundle ~prec stack e))
+          xes
+      in
+      let stack' = push_ros xvs stack in
+      let _, v = comp ~bundle ~prec stack' c in
+      (stack, v)
+  | Syntax.PNewvar (xes, c) ->
+      let xvs =
+        List.map (fun (x, e) -> (x, comp_ro ~bundle ~prec stack e)) xes
+      in
+      let stack' = push_rws xvs stack in
+      let _, v = comp ~bundle ~prec stack' c in
+      (stack, v)
+  | Syntax.PLet (xes, c) ->
       let xvs =
         List.map (fun (x, e) -> (x, comp_ro ~bundle ~prec stack e)) xes
       in
