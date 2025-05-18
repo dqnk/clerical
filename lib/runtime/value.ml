@@ -1,23 +1,26 @@
-(* Runtime values and computations. *)
+(* Runtime values *)
 
-(** Value *)
+(** Values stored in variables *)
 type value =
   | VBoolean of bool
   | VInteger of Mpzf.t
   | VReal of Reals.Real.t
   | VUnit
 
-(** Result of a read-only computation *)
-type result_ro = RO of value
+(** Results of computations *)
+type result =
+  | CBoolean of bool
+  | CInteger of Mpzf.t
+  | CReal of Reals.Real.t
+  | CUnit
+  | CNone
 
-(** Result of a read-write computation *)
-type result = RW of value
-
-(** Embed a value into a read-write computation *)
-let return v = RW v
-
-(** Embed a value into a read-only computation *)
-let return_ro v = RO v
+(** Embed a value into results *)
+let return = function
+  | VBoolean b -> CBoolean b
+  | VInteger k -> CInteger k
+  | VReal r -> CReal r
+  | VUnit -> CUnit
 
 (** Extract an integers from a value *)
 let value_as_integer = function
@@ -34,31 +37,34 @@ let value_as_real = function
   | VReal r -> Some r
   | VInteger _ | VBoolean _ | VUnit -> None
 
-(** Extract a unit from value *)
-let value_as_unit = function
-  | VUnit -> Some ()
-  | VBoolean _ | VInteger _ | VReal _ -> None
+(** Extract a boolean from a computation results *)
+let computation_as_boolean = function
+  | CBoolean b -> Some b
+  | CInteger _ | CReal _ | CUnit | CNone -> None
 
-(** Extract a boolean from a read-only computation *)
-let ro_as_boolean (RO v) = value_as_boolean v
+(** Extract an integer from a computation results *)
+let computation_as_integer = function
+  | CInteger k -> Some k
+  | CBoolean _ | CReal _ | CUnit | CNone -> None
 
-(** Extract an integer from a read-only computation *)
-let ro_as_integer (RO v) = value_as_integer v
+(** Extract an integer from a computation results *)
+let computation_as_real = function
+  | CReal r -> Some r
+  | CBoolean _ | CInteger _ | CUnit | CNone -> None
 
-(** Extract an integer from a read-only computation *)
-let ro_as_real (RO v) = value_as_real v
+(** Extract a value from a computation results *)
+let computation_as_value = function
+  | CInteger k -> Some (VInteger k)
+  | CBoolean b -> Some (VBoolean b)
+  | CReal r -> Some (VReal r)
+  | CUnit -> Some VUnit
+  | CNone -> None
 
-(** Extract an unit from a read-only computation *)
-let ro_as_unit (RO v) = value_as_unit v
+(** Make sure the computation returned no result *)
+let computation_as_unit = function
+  | CUnit -> Some ()
+  | CBoolean _ | CInteger _ | CReal _ | CNone -> None
 
-(** Extract a value from a read-only computation *)
-let ro_as_value (RO v) = v
-
-(** Convert the result of a read-only computation to the result of a read-write
-    computation.*)
-let ro_as_rw (RO v) = RW v
-
-(** Print a value *)
 let print_value v ppf =
   match v with
   | VBoolean b -> Format.fprintf ppf "%b" b
@@ -66,5 +72,10 @@ let print_value v ppf =
   | VReal r -> Format.fprintf ppf "%s" (Reals.Real.to_string r)
   | VUnit -> Format.fprintf ppf "()"
 
-(** Print the result of a read-write computation *)
-let print_result (RW v) ppf = print_value v ppf
+let print_result v ppf =
+  match v with
+  | CNone -> Format.fprintf ppf ""
+  | CBoolean b -> Format.fprintf ppf "%b" b
+  | CInteger k -> Format.fprintf ppf "%t" (fun ppf -> Mpz.print ppf k)
+  | CReal r -> Format.fprintf ppf "%s" (Reals.Real.to_string r)
+  | CUnit -> Format.fprintf ppf "()"

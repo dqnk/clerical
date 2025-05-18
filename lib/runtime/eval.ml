@@ -7,12 +7,7 @@ module Real = Reals.Real
 (** Make the stack read-only by pushing a new empty top frame onto it, and
     converting the read-write entries to read-only entries. *)
 let make_ro Run.{ frame; frames; funs } =
-  let rw_to_ro = function
-    | (_, Run.RO _) as e -> e
-    | x, Run.RW r -> (x, Run.RO !r)
-  in
-  let frames = List.map (List.map rw_to_ro) (frame :: frames) in
-  Run.{ frame = []; frames; funs }
+  Run.{ frame = []; frames = frame :: frames; funs }
 
 (** Push a read-write value onto the top frame. *)
 let push_rw x v st = Run.{ st with frame = (x, RW (ref v)) :: st.frame }
@@ -90,26 +85,29 @@ let print_trace ~loc ~prec Run.{ frame; frames; _ } =
 (** Extraction of values with expected type *)
 
 let as_integer ~loc v =
-  match Value.ro_as_integer v with
+  match Value.computation_as_integer v with
   | None -> Run.error ~loc Run.IntegerExpected
   | Some k -> k
 
 let as_boolean ~loc v =
-  match Value.ro_as_boolean v with
+  match Value.computation_as_boolean v with
   | None -> Run.error ~loc Run.BooleanExpected
   | Some b -> b
 
 let as_real ~loc v =
-  match Value.ro_as_real v with
+  match Value.computation_as_real v with
   | None -> Run.error ~loc Run.RealExpected
   | Some r -> r
 
-let as_unit ~loc (Value.RW r) =
-  match r with
-  | Value.VUnit -> ()
-  | Value.(VInteger _ | VBoolean _ | VReal _) -> Run.error ~loc Run.UnitExpected
+let as_unit ~loc v =
+  match Value.computation_as_unit v with
+  | None -> Run.error ~loc Run.UnitExpected
+  | Some () -> ()
 
-let as_value ~loc v = Value.ro_as_value v
+let as_value ~loc v =
+  match Value.computation_as_value v with
+  | None -> Run.error ~loc Run.ValueExpected
+  | Some v -> v
 
 (** [comp ~prec n stack c] evaluates computation [c] in the given [stack] at
     precision level [n], and returns the new stack and the computed value. *)
@@ -134,8 +132,7 @@ let rec comp ~prec stack { Location.data = c; Location.loc } :
       | None -> Run.error ~loc Run.InvalidFunction
       | Some f ->
           let vs = List.map (fun e -> comp_ro_value ~prec stack e) es in
-          let p = f ~loc ~prec vs in
-          let r = Value.ro_as_rw p in
+          let r = f ~loc ~prec vs in
           (stack, r))
   | Syntax.Skip -> (stack, Value.(return VUnit))
   | Syntax.Trace ->
@@ -232,9 +229,9 @@ let rec comp ~prec stack { Location.data = c; Location.loc } :
         loop 1 poorest)
 
 (** Compute a read-only computation. *)
-and comp_ro ~prec stack c : Value.result_ro =
-  let _, Value.RW v = comp ~prec (make_ro stack) c in
-  Value.RO v
+and comp_ro ~prec stack c : Value.result =
+  let v = snd @@ comp ~prec (make_ro stack) c in
+  v
 
 (** Compute a read-only computation and extract its value. *)
 and comp_ro_value ~prec stack c =

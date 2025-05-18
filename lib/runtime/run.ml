@@ -20,6 +20,7 @@ type runtime_error =
   | IntegerExpected
   | RealExpected
   | NonnegativeRealExpected
+  | ValueExpected
   | PrecisionLoss
   | CannotWrite
   | InvalidFunction
@@ -48,6 +49,7 @@ let rec print_error err ppf =
   | IntegerExpected -> Format.fprintf ppf "integer expected"
   | RealExpected -> Format.fprintf ppf "real expected"
   | NonnegativeRealExpected -> Format.fprintf ppf "non-negative real expected"
+  | ValueExpected -> Format.fprintf ppf "a value expected"
   | PrecisionLoss ->
       Format.fprintf ppf "loss of precision, try increasing --max-prec"
   | CannotWrite -> Format.fprintf ppf "cannot write into a read-only position"
@@ -87,8 +89,7 @@ type stack = {
   frame : (Name.ident * entry) list; (* read-write *)
   frames : (Name.ident * entry) list list; (* read-only *)
   funs :
-    (loc:Location.t -> prec:precision -> Value.value list -> Value.result_ro)
-    list;
+    (loc:Location.t -> prec:precision -> Value.value list -> Value.result) list;
 }
 (** The top frame is the one that we can write into, all the other frames are
     read-only. *)
