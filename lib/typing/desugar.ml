@@ -169,6 +169,11 @@ let rec comp ctx { Location.data = c; Location.loc } =
     | Input.ArrayLen e ->
         let e = comp ctx e in
         Syntax.ArrayLen e
+    | Input.ArrayAssign (e1, x, e2) ->
+        let e1 = comp ctx e1 in
+        let x = comp ctx x in
+        let e2 = comp ctx e2 in
+        Syntax.ArrayAssign (e1, x, e2)
   in
 
   let c = comp' ctx c in

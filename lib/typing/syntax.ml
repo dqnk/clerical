@@ -30,6 +30,7 @@ and comp' =
   | ArrayInit of comp * Name.ident * comp
   | ArrayIndex of comp * comp
   | ArrayLen of comp
+  | ArrayAssign of comp * comp * comp
 
 type toplevel = toplevel' Location.located
 

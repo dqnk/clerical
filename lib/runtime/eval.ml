@@ -263,6 +263,14 @@ let rec comp ~prec stack { Location.data = c; Location.loc } :
       let vs = comp_ro_array ~loc ~prec stack e in
       let n = Array.length vs in
       (stack, Value.(return (Value.VInteger (Mpzf.of_int n))))
+  | Syntax.ArrayAssign (e1, x, e2) -> (
+      let vs = comp_ro_array ~loc ~prec stack e1 in
+      try
+        let x = comp_ro_int ~loc ~prec stack x in
+        let v = comp_ro_value ~prec stack e2 in
+        vs.(x) <- v;
+        (stack, Value.(return VUnit))
+      with Invalid_argument e -> Run.error ~loc @@ Run.ArrayError e)
 
 (** Compute a read-only computation. *)
 and comp_ro ~prec stack c : Value.result_ro =

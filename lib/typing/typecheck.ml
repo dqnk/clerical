@@ -179,6 +179,11 @@ let rec comp ctx { Location.data = c; loc } =
   | Syntax.ArrayLen e ->
       let _ = check_array ctx e in
       Type.(Cmd Integer)
+  | Syntax.ArrayAssign (e1, x, e2) ->
+      let t1 = check_array ctx e1 in
+      let _ = check_expr ctx Type.Integer x in
+      let _ = check_expr ctx t1 e2 in
+      Type.(Cmd Unit)
 
 (** Infer the type of an expression (read-only computation). *)
 and expr ctx c =
@@ -193,8 +198,8 @@ and check_comp ctx (Type.Cmd t) c =
 (** Check that an expression (read-only computation) has the given type. *)
 and check_expr ctx dt c = check_comp ctx (Type.Cmd dt) c
 
-(** Check that a read-only computation is an array and return the type
-    of the array elements. *)
+(** Check that a read-only computation is an array and return the type of the
+    array elements. *)
 and check_array ctx e =
   match expr ctx e with
   | Type.Array dt -> dt

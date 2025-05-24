@@ -131,6 +131,9 @@ plain_term:
   | LEN LPAREN c=term RPAREN
     { ArrayLen c }
 
+  | x=term LBRACK n=term RBRACK EQ e=op_term
+    { ArrayAssign (x, n, e) }
+
 op_term: mark_location(plain_op_term) { $1 }
 plain_op_term:
   | e=plain_prefix_term                            { e }
