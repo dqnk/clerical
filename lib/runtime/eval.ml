@@ -246,9 +246,10 @@ let rec comp ~prec stack { Location.data = c; Location.loc } :
   | Syntax.ArrayInit (e1, x, e2) ->
       let n = comp_ro_int ~loc ~prec stack e1 in
       let vs =
-        Array.init n (fun i ->
+        Parallel.array_map (fun i ->
             let stack = push_ro x (Value.VInteger (Mpzf.of_int i)) stack in
             comp_ro_value ~prec stack e2)
+        @@ Array.init n (fun i -> i)
       in
       (stack, Value.(return (VArray vs)))
   | Syntax.ArrayIndex (e1, e2) -> (
