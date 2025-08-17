@@ -6,6 +6,9 @@ function bool f ():
   true
 
 function bool g ():
+  if false then true else h () end
+
+and function bool h ():
   if false then true else g () end
 
 function bool recurse():
